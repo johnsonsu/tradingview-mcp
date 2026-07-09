@@ -22,7 +22,7 @@ Backtesting + live sentiment + Yahoo Finance + 30+ technical-analysis tools — 
 > **Prefer zero setup? Use the hosted version.** [**pro.cryptosieve.com**](https://pro.cryptosieve.com) serves all 30+ tools as one connector URL for Claude.ai, ChatGPT, Copilot, and Cursor — no `uv`, `pandas`, or Python to wrangle. **From $9/mo (Pro) or $29/mo (Pro+ — higher limits), with a 3-day free trial.** Self-hosting stays free forever; hosted is just for folks who'd rather skip the ops. *(Full self-host vs hosted comparison in Quick Start below.)*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10-3.13](https://img.shields.io/badge/python-3.10--3.13-blue.svg)](https://www.python.org/downloads/)
 [![MCP Ready](https://img.shields.io/badge/MCP-Ready-brightgreen)](https://modelcontextprotocol.com/)
 [![OpenClaw Ready](https://img.shields.io/badge/OpenClaw-Ready-blueviolet)](https://openclaw.ai)
 [![Version](https://img.shields.io/badge/version-v0.7.0-blue)](https://github.com/atilaahmettaner/tradingview-mcp/releases)
@@ -53,6 +53,7 @@ https://github-production-user-asset-6210df.s3.amazonaws.com/67838093/478689497-
 
 **Stability & Strategy Expansion (May 2026)**
 
+- **Async hot-path tools** — 7 high-traffic tools (`yahoo_price`, `stock_extended_hours`, `top_gainers`, `volume_breakout_scanner`, `multi_timeframe_analysis`, `financial_news`, `combined_analysis`) converted to `async def`. FastMCP runs sync tools serialized on the event loop — async unlocks real intra-server parallelism so concurrent tool calls actually overlap. `combined_analysis` additionally fans its 3 sub-calls out via `asyncio.gather` for ~3× wall-clock improvement on the power tool. `yahoo_price` / `stock_extended_hours` use `httpx.AsyncClient` for true non-blocking I/O; sync-library tools (`tradingview_ta`, `tradingview-screener`, `feedparser`) are off-loaded via `asyncio.to_thread`. *(PR — open)*
 - **9 backtest strategies** (up from 6) — added `rsi_pullback`, `keltner_breakout`, and `triple_ema`, covering trend-pullback, ATR-normalized breakout, and SMA200-filtered EMA cross edges. `compare_strategies` now ranks the full 9.
 - **Resilience layer** — automatic retry + 60-second TTL cache on the TradingView screener provider, eliminating transient `"Expecting value"` errors on `combined_analysis` and `multi_timeframe_analysis`. *(PR [#32](https://github.com/atilaahmettaner/tradingview-mcp/pull/32) — merged)*
 - **Financial news service rebuild** — replaces deprecated Reuters RSS endpoints with Yahoo Finance, MarketWatch, and CNBC. Fixes the long-standing `count: 0` bug on `financial_news`. *(PR [#33](https://github.com/atilaahmettaner/tradingview-mcp/pull/33) — merged)*
@@ -101,6 +102,21 @@ https://github-production-user-asset-6210df.s3.amazonaws.com/67838093/478689497-
 ```bash
 pip install tradingview-mcp-server
 ```
+
+### Optional: news & sentiment (free Marketaux key)
+
+`financial_news` and `market_sentiment` (plus the news/sentiment parts of
+`combined_analysis`) are powered by [Marketaux](https://www.marketaux.com/) —
+licensed market news with per-entity sentiment. Grab a **free API key**
+(100 requests/day; the server caches for 4h and shares one fetch between news
+and sentiment, so the free tier goes a long way) and set:
+
+```bash
+export MARKETAUX_API_TOKEN=your_token_here   # optional
+```
+
+Without a token those two tools return a friendly "not configured" note — all
+other tools work normally.
 
 ### Claude Desktop Config (`claude_desktop_config.json`)
 
@@ -163,7 +179,7 @@ Symptom — you see this in the Claude Desktop logs shortly after adding the con
 [tradingview] notifications/cancelled — reason: "MCP error -32001: Request timed out"
 ```
 
-**Why it happens:** on Windows with Python 3.14, `uvx` downloads `tradingview-mcp-server`, creates a fresh virtualenv, and installs dependencies the first time it runs. Because `pandas` has no prebuilt wheel for Python 3.14 yet, pip falls back to a source build — which typically exceeds Claude Desktop's 60-second MCP initialization timeout.
+**Why it happens:** Python 3.14 is not supported yet. `uvx` downloads `tradingview-mcp-server`, creates a fresh virtualenv, and installs dependencies the first time it runs. Some native dependencies in the MCP stack do not currently publish compatible Python 3.14 wheels, so installation can fall back to source builds or fail before Claude Desktop finishes initializing the server.
 
 **Fix — pin to Python 3.13 (has prebuilt pandas wheels):**
 
