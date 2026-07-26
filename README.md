@@ -3,11 +3,29 @@
 <a href="https://trendshift.io/repositories/25110" target="_blank"><img src="https://trendshift.io/api/badge/repositories/25110" alt="atilaahmettaner%2Ftradingview-mcp | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
 **TradingView MCP server** — real-time market data, technical indicators, screeners, and backtesting for Claude, ChatGPT, Cursor, Copilot, and any MCP client. Stocks, crypto, forex & futures across global exchanges.
-Backtesting + live sentiment + Yahoo Finance + 30+ technical-analysis tools — the most complete TradingView MCP toolkit, all in one server.
+Backtesting + live sentiment + Yahoo Finance + 37 technical-analysis tools — the most complete TradingView MCP toolkit, all in one server.
 
 <p align="center">
-  <img src=".github/assets/tradingview-mcp-demo.gif" width="820" alt="TradingView MCP in an AI chat: ask for the top gainers on Binance and get ranked, real-time results — one of 30+ tools" />
+  <img src=".github/assets/tradingview-mcp-demo.gif" width="820" alt="TradingView MCP in an AI chat: ask for the top gainers on Binance and get ranked, real-time results — one of 37 tools" />
 </p>
+
+**Paste one URL (or `pip install`), then just ask.** Real output, straight from the live server:
+
+<p align="center">
+  <img src="assets/showcase-top-gainers.png" width="820" alt="Real output: top crypto gainers on KuCoin with 24h change, RSI and signal — ranked table returned in chat" />
+</p>
+<p align="center">
+  <img src="assets/showcase-gold-mtf.png" width="820" alt="Real output: multi-timeframe gold analysis — weekly to 15m trend alignment with a LEAN BULLISH verdict" />
+</p>
+
+**Try these first** — they work in Claude, ChatGPT, Cursor, or any MCP client:
+
+```text
+Show today's top crypto gainers on Binance
+Run a full technical analysis of NVDA
+What's the multi-timeframe read on gold?
+Backtest an RSI strategy on BTC on the daily timeframe
+```
 
 > [!NOTE]
 > Independent open-source project — **not affiliated with, endorsed by, or associated with TradingView Inc.** "TradingView" is a trademark of its respective owner; this project consumes third-party market data and is not a TradingView product.
@@ -19,7 +37,7 @@ Backtesting + live sentiment + Yahoo Finance + 30+ technical-analysis tools — 
 > **Not financial advice.** Nothing produced by this software is investment, financial, legal, tax, or accounting advice. tradingview-mcp is an informational and educational analysis tool. Its outputs, including indicators, scores, signals, "trade setups", entries, stop losses, and targets, are computed from third party market data and are **not** recommendations to buy, sell, or hold any asset. It does not execute trades, manage money, or guarantee any result. Trading and investing carry a substantial risk of loss, and you can lose some or all of your capital. Always do your own research and consult a licensed professional before making any financial decision. You are solely responsible for your own decisions and for complying with the laws and regulations that apply to you. Market data may be delayed, inaccurate, or incomplete, and is provided without warranty.
 
 > [!TIP]
-> **Prefer zero setup? Use the hosted version.** [**pro.cryptosieve.com**](https://pro.cryptosieve.com) serves all 30+ tools as one connector URL for Claude.ai, ChatGPT, Copilot, and Cursor — no `uv`, `pandas`, or Python to wrangle. **From $9/mo (Pro) or $29/mo (Pro+ — higher limits), with a 3-day free trial.** Self-hosting stays free forever; hosted is just for folks who'd rather skip the ops. *(Full self-host vs hosted comparison in Quick Start below.)*
+> **Prefer zero setup? Use the hosted version.** [**pro.cryptosieve.com**](https://pro.cryptosieve.com) serves all 37 tools as one connector URL for Claude.ai, ChatGPT, Copilot, and Cursor — no `uv`, `pandas`, or Python to wrangle. **From $9/mo (Pro) or $29/mo (Pro+ — higher limits), with a 3-day free trial.** Self-hosting stays free forever; hosted is just for folks who'd rather skip the ops. *(Full self-host vs hosted comparison in Quick Start below.)*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10-3.13](https://img.shields.io/badge/python-3.10--3.13-blue.svg)](https://www.python.org/downloads/)
@@ -85,7 +103,7 @@ https://github-production-user-asset-6210df.s3.amazonaws.com/67838093/478689497-
 
 ## 🚀 Quick Start (5 Minutes)
 
-**Two ways to run it — the same 30+ tools either way:**
+**Two ways to run it — the same 37 tools either way:**
 
 | | 🧑‍💻 Self-host (this repo) | ☁️ Hosted — [pro.cryptosieve.com](https://pro.cryptosieve.com) |
 |---|---|---|
@@ -344,7 +362,7 @@ Unlike basic screeners, this framework deploys **specialized AI agents** that de
 
 ---
 
-## 🔧 All 30+ MCP Tools
+## 🔧 All 37 MCP Tools
 
 ### 📊 Backtesting Engine
 

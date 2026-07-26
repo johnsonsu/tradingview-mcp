@@ -132,6 +132,17 @@ _TRADINGVIEW_SYMBOL_ALIASES: dict = {
     # token called "XAUUSD"/"XAGUSD"), so these always map to the TVC CFD feed.
     "XAUUSD": "TVC:GOLD",
     "XAGUSD": "TVC:SILVER",
+    # Precious-metal FUTURES + spot notations. AIs read these off market_snapshot
+    # (e.g. "COMEX GC1!") and then feed the futures ticker straight into analysis;
+    # without an alias they resolved to KUCOIN:GC1! and 404'd. The "1!/2!"
+    # continuous-futures and X..USD spot forms are unambiguous (no venue lists a
+    # stock/token by these names), so they always map to the verified TVC CFD
+    # feeds. USOIL/COPPER/NATGAS TVC symbols don't resolve, so those are
+    # deliberately omitted rather than aliased to a dead feed.
+    "GC1!": "TVC:GOLD", "GC2!": "TVC:GOLD", "MGC1!": "TVC:GOLD", "GCUSD": "TVC:GOLD",
+    "SI1!": "TVC:SILVER", "SIL1!": "TVC:SILVER", "SIUSD": "TVC:SILVER",
+    "PL1!": "TVC:PLATINUM", "XPTUSD": "TVC:PLATINUM",
+    "PA1!": "TVC:PALLADIUM", "XPDUSD": "TVC:PALLADIUM",
 }
 
 # "Soft" commodity aliases: bare tickers that ALSO exist as real equities/indices

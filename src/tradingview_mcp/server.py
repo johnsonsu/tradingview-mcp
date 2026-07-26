@@ -1070,6 +1070,43 @@ def exchanges_list() -> str:
 
 # ── Entry point ────────────────────────────────────────────────────────────────
 
+# ---------------------------------------------------------------------------
+# Blanket async offload for every still-synchronous tool.
+#
+# mcp 1.12.x calls sync tool functions BARE on the event loop
+# (func_metadata.call_fn_with_arg_validation ends in `return fn(**kwargs)`),
+# so one slow scan stalls every concurrent session. Seven hot paths were
+# hand-converted to async (#49), which left an arbitrary split — top_gainers
+# offloaded while its twin top_losers blocked (issue #77). Rather than
+# maintaining that list tool-by-tool, wrap whatever is still sync at import
+# time in asyncio.to_thread. Tools added later are covered automatically the
+# moment this module loads. Argument validation is untouched: FastMCP
+# validates against fn_metadata (built from the ORIGINAL signature via
+# functools.wraps) and then calls fn(**parsed_kwargs), which the wrapper
+# forwards verbatim.
+# ---------------------------------------------------------------------------
+def _offload_sync_tools() -> int:
+    import functools
+
+    converted = 0
+    for _tool in mcp._tool_manager.list_tools():
+        if _tool.is_async:
+            continue
+        _sync_fn = _tool.fn
+
+        @functools.wraps(_sync_fn)
+        async def _threaded(*args, __sync_fn=_sync_fn, **kwargs):
+            return await asyncio.to_thread(__sync_fn, *args, **kwargs)
+
+        _tool.fn = _threaded
+        _tool.is_async = True
+        converted += 1
+    return converted
+
+
+_OFFLOADED_TOOL_COUNT = _offload_sync_tools()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="TradingView Screener MCP server")
     parser.add_argument(
