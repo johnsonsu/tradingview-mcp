@@ -85,8 +85,8 @@ from tradingview_mcp.core.utils.validators import (
     normalize_yahoo_symbol,
 )
 from tradingview_mcp.core.errors import (
-    BatchExecutionError,
     ErrorCode,
+    exception_to_envelope,
     make_error,
 )
 
@@ -126,8 +126,9 @@ async def top_gainers(exchange: str = "KUCOIN", timeframe: str = "15m", limit: i
         limit: Number of rows to return (max 50)
 
     Returns:
-        list[dict] on success. On total upstream failure returns a structured
-        error envelope: ``{"error": {"code": "ALL_BATCHES_FAILED", ...}}``.
+        list[dict] on success. On ANY failure returns a structured error
+        envelope ``{"error": {"code": ..., "retryable": ...}}`` — never a
+        raw exception string.
     """
     exchange = sanitize_exchange(exchange, "KUCOIN")
     timeframe = sanitize_timeframe(timeframe, "15m")
@@ -139,13 +140,8 @@ async def top_gainers(exchange: str = "KUCOIN", timeframe: str = "15m", limit: i
         rows = await asyncio.to_thread(
             fetch_trending_analysis, exchange, timeframe=timeframe, limit=limit
         )
-    except BatchExecutionError as e:
-        return make_error(
-            ErrorCode.ALL_BATCHES_FAILED, str(e),
-            batches_attempted=e.batches_attempted,
-            batches_failed=e.batches_failed,
-            first_error=e.first_error,
-        )
+    except Exception as e:
+        return exception_to_envelope(e, context="top_gainers")
     return [{"symbol": r["symbol"], "changePercent": r["changePercent"], "indicators": dict(r["indicators"])} for r in rows]
 
 
@@ -153,27 +149,22 @@ async def top_gainers(exchange: str = "KUCOIN", timeframe: str = "15m", limit: i
 def top_losers(exchange: str = "KUCOIN", timeframe: str = "15m", limit: int = 25) -> list[dict] | dict:
     """Return top losers for an exchange and timeframe. Supports crypto (KUCOIN, BINANCE, MEXC) and stocks (EGX, BIST, NASDAQ).
 
-    Returns ``list[dict]`` on success, or an error envelope on total upstream
-    failure (``{"error": {"code": "ALL_BATCHES_FAILED", ...}}``).
+    Returns ``list[dict]`` on success. On ANY failure returns a structured
+    error envelope ``{"error": {"code": ..., "retryable": ...}}``.
     """
     exchange = sanitize_exchange(exchange, "KUCOIN")
     timeframe = sanitize_timeframe(timeframe, "15m")
     limit = max(1, min(limit, 50))
     try:
         rows = fetch_trending_analysis(exchange, timeframe=timeframe, limit=limit)
-    except BatchExecutionError as e:
-        return make_error(
-            ErrorCode.ALL_BATCHES_FAILED, str(e),
-            batches_attempted=e.batches_attempted,
-            batches_failed=e.batches_failed,
-            first_error=e.first_error,
-        )
+    except Exception as e:
+        return exception_to_envelope(e, context="top_losers")
     rows.sort(key=lambda x: x["changePercent"])
     return [{"symbol": r["symbol"], "changePercent": r["changePercent"], "indicators": dict(r["indicators"])} for r in rows[:limit]]
 
 
 @mcp.tool(annotations=ToolAnnotations(title="Bollinger Squeeze Scanner", readOnlyHint=True, destructiveHint=False, openWorldHint=True))
-def bollinger_scan(exchange: str = "KUCOIN", timeframe: str = "4h", bbw_threshold: float = 0.04, limit: int = 50) -> list[dict]:
+def bollinger_scan(exchange: str = "KUCOIN", timeframe: str = "4h", bbw_threshold: float = 0.04, limit: int = 50) -> list[dict] | dict:
     """Scan for assets with low Bollinger Band Width (squeeze detection). Works with crypto and stocks.
 
     This scans a whole EXCHANGE for squeezes (canonical name is exactly
@@ -187,11 +178,17 @@ def bollinger_scan(exchange: str = "KUCOIN", timeframe: str = "4h", bbw_threshol
         timeframe: One of 5m, 15m, 1h, 4h, 1D, 1W, 1M. Typical squeeze thresholds: 15m→0.008, 1h→0.02, 4h→0.04, 1D→0.12
         bbw_threshold: Maximum BBW value to filter (default 0.04)
         limit: Number of rows to return (max 100)
+
+    Returns ``list[dict]`` on success. On ANY failure returns a structured
+    error envelope ``{"error": {"code": ..., "retryable": ...}}``.
     """
     exchange = sanitize_exchange(exchange, "KUCOIN")
     timeframe = sanitize_timeframe(timeframe, "4h")
     limit = max(1, min(limit, 100))
-    rows = fetch_bollinger_analysis(exchange, timeframe=timeframe, bbw_filter=bbw_threshold, limit=limit)
+    try:
+        rows = fetch_bollinger_analysis(exchange, timeframe=timeframe, bbw_filter=bbw_threshold, limit=limit)
+    except Exception as e:
+        return exception_to_envelope(e, context="bollinger_scan")
     return [{"symbol": r["symbol"], "changePercent": r["changePercent"], "indicators": dict(r["indicators"])} for r in rows]
 
 
@@ -205,8 +202,8 @@ def rating_filter(exchange: str = "KUCOIN", timeframe: str = "5m", rating: int =
         rating: BB rating (-3 to +3): -3=Strong Sell, -2=Sell, -1=Weak Sell, 1=Weak Buy, 2=Buy, 3=Strong Buy
         limit: Number of rows to return (max 50)
 
-    Returns ``list[dict]`` on success, or an error envelope on total upstream
-    failure (``{"error": {"code": "ALL_BATCHES_FAILED", ...}}``).
+    Returns ``list[dict]`` on success. On ANY failure returns a structured
+    error envelope ``{"error": {"code": ..., "retryable": ...}}``.
     """
     exchange = sanitize_exchange(exchange, "KUCOIN")
     timeframe = sanitize_timeframe(timeframe, "5m")
@@ -214,13 +211,8 @@ def rating_filter(exchange: str = "KUCOIN", timeframe: str = "5m", rating: int =
     limit = max(1, min(limit, 50))
     try:
         rows = fetch_trending_analysis(exchange, timeframe=timeframe, filter_type="rating", rating_filter=rating, limit=limit)
-    except BatchExecutionError as e:
-        return make_error(
-            ErrorCode.ALL_BATCHES_FAILED, str(e),
-            batches_attempted=e.batches_attempted,
-            batches_failed=e.batches_failed,
-            first_error=e.first_error,
-        )
+    except Exception as e:
+        return exception_to_envelope(e, context="rating_filter")
     return [{"symbol": r["symbol"], "changePercent": r["changePercent"], "indicators": dict(r["indicators"])} for r in rows]
 
 
@@ -363,13 +355,8 @@ async def volume_breakout_scanner(
             volume_breakout_scan,
             exchange, timeframe, volume_multiplier, price_change_min, limit,
         )
-    except BatchExecutionError as e:
-        return make_error(
-            ErrorCode.ALL_BATCHES_FAILED, str(e),
-            batches_attempted=e.batches_attempted,
-            batches_failed=e.batches_failed,
-            first_error=e.first_error,
-        )
+    except Exception as e:
+        return exception_to_envelope(e, context="volume_breakout_scanner")
 
 
 @mcp.tool(annotations=ToolAnnotations(title="Volume Confirmation Analysis", readOnlyHint=True, destructiveHint=False, openWorldHint=True))
@@ -403,9 +390,8 @@ def smart_volume_scanner(
         rsi_range: "oversold" (<30), "overbought" (>70), "neutral" (30-70), "any"
         limit: Number of results (max 30)
 
-    Returns ``list[dict]`` on success, or an error envelope on total upstream
-    failure (``{"error": {"code": "ALL_BATCHES_FAILED", ...}}``) — inherited
-    from the inner ``volume_breakout_scan`` call.
+    Returns ``list[dict]`` on success. On ANY failure returns a structured
+    error envelope ``{"error": {"code": ..., "retryable": ...}}``.
     """
     exchange = sanitize_exchange(exchange, "KUCOIN")
     min_volume_ratio = max(1.2, min(10.0, min_volume_ratio))
@@ -413,13 +399,8 @@ def smart_volume_scanner(
     limit = max(1, min(limit, 30))
     try:
         return smart_volume_scan(exchange, min_volume_ratio, min_price_change, rsi_range, limit)
-    except BatchExecutionError as e:
-        return make_error(
-            ErrorCode.ALL_BATCHES_FAILED, str(e),
-            batches_attempted=e.batches_attempted,
-            batches_failed=e.batches_failed,
-            first_error=e.first_error,
-        )
+    except Exception as e:
+        return exception_to_envelope(e, context="smart_volume_scanner")
 
 
 # ── Multi-agent analysis ───────────────────────────────────────────────────────
@@ -916,7 +897,9 @@ def futures_market_overview(
             volume_min=volume_min,
         )
     except Exception as exc:
-        return make_error(ErrorCode.SERVICE_ERROR, f"Futures overview failed: {exc}")
+        # NOTE: was ErrorCode.SERVICE_ERROR — a member that never existed, so
+        # this handler itself raised AttributeError instead of returning.
+        return make_error(ErrorCode.UPSTREAM_ERROR, f"Futures overview failed: {exc}", retryable=True)
 
 
 @mcp.tool(annotations=ToolAnnotations(title="Futures Top Movers", readOnlyHint=True, destructiveHint=False, openWorldHint=True))
@@ -948,7 +931,7 @@ def futures_top_movers(
             volume_min=volume_min,
         )
     except Exception as exc:
-        return make_error(ErrorCode.SERVICE_ERROR, f"Futures movers failed: {exc}")
+        return make_error(ErrorCode.UPSTREAM_ERROR, f"Futures movers failed: {exc}", retryable=True)
 
 
 @mcp.tool(annotations=ToolAnnotations(title="Futures Category Snapshot", readOnlyHint=True, destructiveHint=False, openWorldHint=True))

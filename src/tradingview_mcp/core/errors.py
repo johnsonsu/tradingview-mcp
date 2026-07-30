@@ -90,6 +90,29 @@ def is_error(payload: Any) -> bool:
     )
 
 
+class ScreenerServiceError(RuntimeError):
+    """Typed service-layer failure carrying an :class:`ErrorCode`.
+
+    Subclasses ``RuntimeError`` deliberately: the pre-envelope service guards
+    raised bare ``RuntimeError``, so any external caller with
+    ``except RuntimeError`` keeps working unchanged while the MCP boundary
+    gains a lossless translation to the structured envelope.
+
+    Attributes:
+        code:  Stable :class:`ErrorCode` for programmatic branching.
+        extra: Structured context merged into the envelope
+               (e.g. ``exchange="EGX"``, ``retryable=True``).
+    """
+
+    def __init__(self, code: Union[ErrorCode, str], message: str, **extra: Any) -> None:
+        super().__init__(message)
+        self.code = code
+        self.extra = extra
+
+    def to_envelope(self) -> dict[str, Any]:
+        return make_error(self.code, str(self), **self.extra)
+
+
 class BatchExecutionError(Exception):
     """Raised by batched scanners when every batch failed.
 
@@ -118,3 +141,29 @@ class BatchExecutionError(Exception):
         self.batches_attempted = batches_attempted
         self.batches_failed = batches_failed
         self.first_error = first_error
+
+
+def exception_to_envelope(exc: BaseException, *, context: str = "") -> dict[str, Any]:
+    """Translate any exception into the structured envelope at the MCP boundary.
+
+    ``retryable`` semantics: batched-scan wipeouts are storms that pass, so
+    they are marked retryable; unexpected exceptions are not (retrying the
+    same bug yields the same crash).
+
+    Args:
+        exc:     The caught exception.
+        context: Tool name prefixed to unexpected-exception messages so the
+                 envelope stays diagnosable without a traceback.
+    """
+    if isinstance(exc, ScreenerServiceError):
+        return exc.to_envelope()
+    if isinstance(exc, BatchExecutionError):
+        return make_error(
+            ErrorCode.ALL_BATCHES_FAILED, str(exc),
+            batches_attempted=exc.batches_attempted,
+            batches_failed=exc.batches_failed,
+            first_error=exc.first_error,
+            retryable=True,
+        )
+    msg = f"{context} failed: {exc!r}" if context else repr(exc)
+    return make_error(ErrorCode.INTERNAL_ERROR, msg, retryable=False)

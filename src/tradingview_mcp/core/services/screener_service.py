@@ -16,7 +16,13 @@ import sys
 import time as _time
 from typing import Any, List, Optional
 
-from tradingview_mcp.core.errors import BatchExecutionError, ErrorCode, is_error, make_error
+from tradingview_mcp.core.errors import (
+    BatchExecutionError,
+    ErrorCode,
+    ScreenerServiceError,
+    is_error,
+    make_error,
+)
 from tradingview_mcp.core.types import (
     IndicatorMap, MultiRow, Row,
     percent_change, tf_to_tv_resolution,
@@ -116,11 +122,19 @@ def fetch_bollinger_analysis(
         List of Row dicts sorted by changePercent descending.
     """
     if not _TA_AVAILABLE:
-        raise RuntimeError("tradingview_ta is missing; run `uv sync`.")
+        raise ScreenerServiceError(
+            ErrorCode.DEPENDENCY_MISSING,
+            "tradingview_ta is missing; run `uv sync`.",
+            retryable=False,
+        )
 
     symbols = load_symbols(exchange)
     if not symbols:
-        raise RuntimeError(f"No symbols found for exchange: {exchange}")
+        raise ScreenerServiceError(
+            ErrorCode.NO_DATA,
+            f"No symbols found for exchange: {exchange}",
+            exchange=exchange, retryable=False,
+        )
 
     symbols = symbols[: limit * 2]
     screener = EXCHANGE_SCREENER.get(exchange, "crypto")
@@ -128,7 +142,13 @@ def fetch_bollinger_analysis(
     try:
         analysis = get_multiple_analysis(screener=screener, interval=timeframe, symbols=symbols)
     except Exception as exc:
-        raise RuntimeError(f"Analysis failed: {humanize_upstream_error(exc)}") from exc
+        # Single-shot fetch (no batching here): a failure is an upstream
+        # problem, and TradingView storms pass — mark it retryable.
+        raise ScreenerServiceError(
+            ErrorCode.UPSTREAM_ERROR,
+            f"Analysis failed: {humanize_upstream_error(exc)}",
+            retryable=True,
+        ) from exc
 
     rows: List[Row] = []
     for key, value in analysis.items():
@@ -188,11 +208,19 @@ def fetch_trending_analysis(
         List of Row dicts sorted by changePercent descending.
     """
     if not _TA_AVAILABLE:
-        raise RuntimeError("tradingview_ta is missing; run `uv sync`.")
+        raise ScreenerServiceError(
+            ErrorCode.DEPENDENCY_MISSING,
+            "tradingview_ta is missing; run `uv sync`.",
+            retryable=False,
+        )
 
     symbols = load_symbols(exchange)
     if not symbols:
-        raise RuntimeError(f"No symbols found for exchange: {exchange}")
+        raise ScreenerServiceError(
+            ErrorCode.NO_DATA,
+            f"No symbols found for exchange: {exchange}",
+            exchange=exchange, retryable=False,
+        )
 
     screener = EXCHANGE_SCREENER.get(exchange, "crypto")
     batch_size = 200
